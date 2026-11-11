@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 安装指南 — DWG 标注工厂</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3;line-height:1.6}
+.container{max-width:720px;margin:0 auto;padding:40px 20px}
+h1{font-size:24px;margin-bottom:8px}
+h2{font-size:18px;margin:28px 0 12px;padding-bottom:6px;border-bottom:1px solid #21262d}
+.sub{color:#8b949e;margin-bottom:28px}
+.step{margin-bottom:24px;padding:16px 20px;background:#161b22;border:1px solid #21262d;border-radius:8px}
+.step-num{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;background:#00D4AA;color:#0d1117;border-radius:50%;font-weight:700;font-size:13px;margin-right:8px}
+.step h3{display:inline;font-size:15px}
+.step p{margin:8px 0 0;color:#8b949e;font-size:13px}
+code{background:#0d1117;padding:2px 6px;border-radius:4px;font-size:13px;color:#00D4AA}
+pre{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px 16px;overflow-x:auto;margin:8px 0;font-size:13px}
+pre code{background:none;padding:0;color:#e6edf3}
+a{color:#58a6ff}
+.note{padding:12px 16px;background:#1a1a0a;border-left:3px solid #e3ba3f;border-radius:0 6px 6px 0;margin:16px 0;font-size:13px}
+.back{display:inline-block;margin-top:20px;color:#8b949e;text-decoration:none;font-size:13px}
+.back:hover{color:#e6edf3}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>&#x1F527; Agent 安装指南</h1>
+<p class="sub">在其他安装了 AutoCAD 的电脑上运行 Agent，接入分布式标注网络</p>
+
+<h2>前提条件</h2>
+
+<div class="step">
+  <span class="step-num">1</span><h3>安装 Python 3.9+</h3>
+  <p>从 <a href="https://www.python.org/downloads/" target="_blank">python.org</a> 下载安装，勾选 "Add Python to PATH"</p>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>安装 AutoCAD</h3>
+  <p>确保本机已安装 AutoCAD 2024 / 2025 / 2026 任一版本</p>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>安装 Python 依赖</h3>
+  <p>打开命令行，执行：</p>
+  <pre><code>pip install requests pywin32 Pillow httpx</code></pre>
+</div>
+
+<h2>获取 Agent 程序</h2>
+
+<div class="step">
+  <span class="step-num">4</span><h3>拷贝文件到本机</h3>
+  <p>将以下文件/文件夹从服务器拷贝到本机同一个目录下：</p>
+  <pre><code>dwg_agent.py
+dwg_processor/
+ai_adapters/
+recommendation/</code></pre>
+</div>
+
+<div class="note">
+  <strong>&#x26A0; 注意：</strong>如果你使用的是共享文件夹方案（推荐），DWG 文件放在网络共享路径（如 <code>\\server\dwg_files</code>），所有电脑都能直接访问，无需拷贝 DWG 文件。
+</div>
+
+<h2>配置并运行</h2>
+
+<div class="step">
+  <span class="step-num">5</span><h3>修改服务器地址</h3>
+  <p>编辑 <code>dwg_agent.py</code> 顶部，或通过命令行参数指定服务器地址：</p>
+  <pre><code>python dwg_agent.py http://192.168.1.5:5000</code></pre>
+  <p style="margin-top:8px">默认连接 <code>http://127.0.0.1:5000</code></p>
+</div>
+
+<div class="step">
+  <span class="step-num">6</span><h3>启动 Agent</h3>
+  <pre><code>python dwg_agent.py http://192.168.1.5:5000 --name 张三的电脑</code></pre>
+  <p>启动后会显示 Agent ID、主机名等信息，并自动注册到服务器</p>
+</div>
+
+<div class="step">
+  <span class="step-num">7</span><h3>验证连接</h3>
+  <p>打开服务器网页，左侧应该能看到新增的"工作节点"面板，显示你的电脑在线</p>
+</div>
+
+<a class="back" href="/">&#x2190; 返回主页</a>
+</div>
+</body>
+</html>

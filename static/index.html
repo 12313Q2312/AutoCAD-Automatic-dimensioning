@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>在线 DWG 标注服务</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 粒子背景 -->
+<canvas id="particleCanvas"></canvas>
+
+<!-- 翻页进度指示器 -->
+<div class="page-indicator" id="pageIndicator">
+  <div class="page-dot active"></div>
+  <div class="page-dot"></div>
+  <div class="page-dot"></div>
+  <div class="page-dot"></div>
+  <div class="page-dot"></div>
+  <div class="page-dot"></div>
+</div>
+
+<!-- 顶部导航（固定） -->
+<header class="navbar">
+  <div class="nav-left">
+    <div class="logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">在线 DWG 标注</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <span class="client-id-badge" id="clientIdBadge" style="font-size:0.75rem;color:var(--text-muted);cursor:pointer;" title="点击复制 client_id" onclick="copyClientId()"></span>
+  </div>
+</header>
+
+<!-- ===== 翻页书卷主体 ===== -->
+<main class="book-container">
+
+  <!-- 第1页：首页 -->
+  <section class="book-page" data-page="0">
+    <div class="page-inner">
+      <div class="hero-section">
+        <div class="hero-icon">⚡</div>
+        <h1 class="hero-title">DWG 标注工厂</h1>
+        <p class="hero-sub">在线批量图纸标注服务</p>
+        <div class="hero-divider"></div>
+        <p class="hero-desc">上传 DWG 图纸，自动标注尺寸，完成后下载结果</p>
+        <div class="hero-arrow">↓ 向下翻页</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 第2页：上传图纸 -->
+  <section class="book-page" data-page="1">
+    <div class="page-inner">
+      <div class="page-header">
+        <span class="page-num">01</span>
+        <h2>上传 DWG 图纸</h2>
+      </div>
+      <div class="card folder-card">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📁</div>
+          <p class="drop-text">拖拽 DWG 文件到此处</p>
+          <p class="drop-hint">支持批量上传，或点击下方按钮选择文件</p>
+          <input type="file" class="file-input" id="fileInput" multiple accept=".dwg" style="display:none">
+          <button class="btn btn-sm" id="selectFilesBtn">📂 选择 DWG 文件</button>
+        </div>
+        <div class="file-count" id="fileCount" style="display:none">
+          已选择 <strong id="fileNum">0</strong> 个 DWG 文件
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 第3页：标注模式 -->
+  <section class="book-page" data-page="2">
+    <div class="page-inner">
+      <div class="page-header">
+        <span class="page-num">02</span>
+        <h2>选择标注模式</h2>
+      </div>
+      <div class="card mode-card">
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="standard" id="modeStandard">
+            <span class="mode-icon">🔧</span>
+            <span class="mode-label">标准模式</span>
+            <span class="mode-desc">AutoCAD 自动识别几何标注</span>
+          </button>
+          <button class="mode-btn" data-mode="ai" id="modeAI">
+            <span class="mode-icon">🤖</span>
+            <span class="mode-label">AI 智能模式</span>
+            <span class="mode-desc">接入大模型智能标注</span>
+          </button>
+        </div>
+        <div class="ai-config" id="aiConfig" style="display:none">
+          <div class="form-row">
+            <label>模型</label>
+            <select id="aiProvider" class="input-select">
+              <option value="deepseek">DeepSeek 识图</option>
+              <option value="qwen">通义千问 Qwen-VL</option>
+              <option value="glm">智谱 GLM-4V</option>
+              <option value="ernie">文心一言 ERNIE</option>
+              <option value="kimi">Kimi (月之暗面)</option>
+              <option value="custom">自定义地址</option>
+            </select>
+          </div>
+          <div class="form-row custom-api-row" id="customApiRow" style="display:none">
+            <label>API 地址</label>
+            <input type="text" class="input-text" id="apiBaseInput" placeholder="https://your-api.com/v1">
+          </div>
+          <div class="form-row">
+            <label>API Key</label>
+            <div class="input-with-toggle">
+              <input type="password" class="input-text" id="apiKeyInput" placeholder="输入 API Key">
+              <button class="toggle-vis" id="toggleKey">👁</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 第4页：标注样式 -->
+  <section class="book-page" data-page="3">
+    <div class="page-inner">
+      <div class="page-header">
+        <span class="page-num">03</span>
+        <h2>配置标注样式</h2>
+      </div>
+      <div class="card config-card">
+        <div class="preset-bar">
+          <span class="preset-label">快捷预设:</span>
+          <div class="preset-list" id="presetList">
+            <button class="preset-btn active" data-preset="custom">自定义</button>
+          </div>
+        </div>
+        <div class="config-grid">
+          <div class="form-row">
+            <label>字体</label>
+            <input type="text" class="input-text" id="cfgFont" value="gbeitc.shx">
+          </div>
+          <div class="form-row">
+            <label>文字高度</label>
+            <input type="number" class="input-text" id="cfgTextSize" value="2.5" step="0.5" min="1" max="20">
+          </div>
+          <div class="form-row">
+            <label>箭头类型</label>
+            <select id="cfgArrow" class="input-select">
+              <option value="_ClosedFill">实心闭合</option>
+              <option value="_ArchTick">建筑标记</option>
+              <option value="_Dot">点</option>
+              <option value="_Open">开放</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>箭头大小</label>
+            <input type="number" class="input-text" id="cfgArrowSize" value="2.0" step="0.5" min="0.5" max="10">
+          </div>
+          <div class="form-row">
+            <label>小数位数</label>
+            <select id="cfgPrecision" class="input-select">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>偏移系数</label>
+            <input type="number" class="input-text" id="cfgOffset" value="3.0" step="0.5" min="1" max="20">
+          </div>
+        </div>
+      </div>
+      <!-- 常用推荐 -->
+      <div class="card rec-card" id="recCard" style="display:none">
+        <h3 class="card-title"><span class="icon">⭐</span> 常用推荐</h3>
+        <div class="rec-list" id="recList"></div>
+      </div>
+      <div class="btn-start-wrap">
+        <button class="btn-start" id="startBtn">
+          <span class="btn-icon">🚀</span>
+          <span class="btn-text">开始标注</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 第5页：进度监控 -->
+  <section class="book-page" data-page="4">
+    <div class="page-inner">
+      <div class="page-header">
+        <span class="page-num">04</span>
+        <h2>监控处理进度</h2>
+      </div>
+      <div class="progress-monitor" id="progressMonitor">
+        <div class="card radar-card">
+          <div class="radar-wrap">
+            <canvas id="radarCanvas" width="300" height="200"></canvas>
+            <div class="radar-legend" id="radarLegend">
+              <span class="legend-item"><span class="dot done"></span> 完成 <strong id="legendDone">0</strong></span>
+              <span class="legend-item"><span class="dot fail"></span> 失败 <strong id="legendFail">0</strong></span>
+              <span class="legend-item"><span class="dot wait"></span> 待处理 <strong id="legendWait">0</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="card files-card">
+          <div class="card-title-row">
+            <h3 class="card-title"><span class="icon">📄</span> 文件列表</h3>
+            <span class="file-stats" id="fileStats">等待上传</span>
+          </div>
+          <div class="files-wall" id="filesWall">
+            <div class="empty-state">
+              <div class="empty-icon">📂</div>
+              <p>上传 DWG 文件后开始标注</p>
+            </div>
+          </div>
+        </div>
+        <!-- 底部进度条 -->
+        <div class="progress-bar-wrap" id="progressBarWrap" style="display:none;">
+          <div class="progress-label">
+            <span id="dashStatus">就绪</span>
+            <span id="dashProgress">0 / 0</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+          </div>
+          <div class="progress-pct" id="dashPercent">0%</div>
+        </div>
+        <!-- 撤销按钮 -->
+        <div class="undo-wrap" id="undoWrap" style="display:none;">
+          <button class="btn-undo" id="undoBtn">↩ 清除本次标注操作</button>
+        </div>
+      </div>
+      <!-- 日志 -->
+      <div class="card log-card">
+        <h3 class="card-title"><span class="icon">📋</span> 运行日志</h3>
+        <div class="log-entries" id="logEntries">
+          <div class="log-line info"><span class="log-time">--:--:--</span> 就绪，上传文件后点击开始标注</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 第6页：下载结果 -->
+  <section class="book-page" data-page="5">
+    <div class="page-inner">
+      <div class="page-header">
+        <span class="page-num">05</span>
+        <h2>下载标注结果</h2>
+      </div>
+      <div class="card" id="downloadCard">
+        <div class="download-empty" id="downloadEmpty">
+          <div style="text-align:center;padding:30px;">
+            <p style="font-size:2.5rem;margin-bottom:12px;">📥</p>
+            <p>还没有标注完成的文件</p>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">完成标注后，在这里下载结果</p>
+          </div>
+        </div>
+        <div class="download-list" id="downloadList" style="display:none;"></div>
+      </div>
+      <!-- 全部下载 -->
+      <div class="btn-start-wrap" id="downloadAllWrap" style="display:none;">
+        <button class="btn-start" id="downloadAllBtn" style="background:linear-gradient(135deg, #00D4AA, #3fb950);box-shadow:0 4px 20px rgba(0,212,170,0.3);">
+          <span class="btn-icon">📦</span>
+          <span class="btn-text">下载全部</span>
+        </button>
+      </div>
+      <div class="card log-card" style="margin-top:12px;">
+        <div class="log-entries" id="logEntries2"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

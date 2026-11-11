@@ -1,0 +1,5 @@
+flask>=3.0
+pywin32>=310
+httpx>=0.28
+Pillow>=10.0
+requests>=2.32
