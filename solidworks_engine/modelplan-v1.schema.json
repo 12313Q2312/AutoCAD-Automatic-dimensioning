@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/12313Q2312/AutoCAD-Automatic-dimensioning/blob/main/solidworks_engine/modelplan-v1.schema.json",
+  "title": "ModelPlan v1 offline mechanical feature plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "part_type",
+    "part_label",
+    "units",
+    "parameters",
+    "coordinate_system",
+    "features",
+    "bounding_box_mm"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "part_type": {
+      "enum": [
+        "rectangular_plate",
+        "mounting_plate",
+        "cylinder",
+        "bushing"
+      ]
+    },
+    "part_label": {
+      "type": "string"
+    },
+    "units": {
+      "const": "mm"
+    },
+    "parameters": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z_]+_mm$"
+      },
+      "additionalProperties": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 2000
+      }
+    },
+    "coordinate_system": {
+      "const": "XY平面居中，Z正向拉伸"
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "operation",
+          "sketch"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "extrude",
+              "cut_through"
+            ]
+          },
+          "sketch": {
+            "type": "object"
+          },
+          "depth_mm": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "through_all": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "bounding_box_mm": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      ],
+      "items": false,
+      "minItems": 3
+    }
+  },
+  "additionalProperties": false
+}

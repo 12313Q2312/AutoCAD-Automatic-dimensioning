@@ -174,9 +174,46 @@ def _batch_process_task(task_id: str, files: list, config: dict, mode: str, ai_p
 # ---------- API 路由 ----------
 
 @app.route("/")
+@app.route("/studio")
 def index():
-    """前端主页"""
+    """Unified CAD workbench landing page."""
+    return send_from_directory(app.static_folder, "studio.html")
+
+
+@app.route("/autocad")
+def autocad_legacy():
+    """Existing DWG annotation frontend remains available without changing its API."""
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/api/model/plan", methods=["POST"])
+def api_model_plan():
+    """Offline-only deterministic ModelPlan, not a SolidWorks execution endpoint."""
+    from solidworks_engine import (
+        ModelPlanError, parse_description, plan_from_parameters,
+        validate_plan, render_svg, simulate,
+    )
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"success": False, "error": "请输入 JSON 对象"}), 400
+    try:
+        mode = body.get("mode")
+        if mode == "text":
+            plan = parse_description(body.get("description", ""))
+        elif mode == "parameters":
+            plan = plan_from_parameters(body.get("part_type"), body.get("parameters"))
+        else:
+            raise ModelPlanError("mode 必须是 text 或 parameters", "mode")
+        return jsonify({
+            "success": True,
+            "plan": plan,
+            "validation_report": validate_plan(plan),
+            "preview_svg": render_svg(plan),
+            "dry_run": simulate(plan),
+            "real_solidworks_executed": False,
+        })
+    except ModelPlanError as exc:
+        return jsonify({"success": False, "error": str(exc), "field": exc.field}), 422
 
 
 @app.route("/api/scan", methods=["POST"])
