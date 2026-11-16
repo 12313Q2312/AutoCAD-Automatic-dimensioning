@@ -28,7 +28,7 @@ class StudioRoutesTest(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("DWG".encode(), page.data)
         self.assertIn(b"style.css", page.data)
-        self.assertIn(b\'target="_top"\', page.data)
+        self.assertIn(b'target="_top"', page.data)
         page.close()
         response = self.client.get("/api/gb_presets")
         self.assertEqual(response.status_code, 200)
