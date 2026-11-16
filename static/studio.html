@@ -106,7 +106,7 @@
             <div class="mode-switch" role="group" aria-label="输入模式"><button id="modeText" class="mode-btn selected" type="button" aria-pressed="true">自然语言描述</button><button id="modeForm" class="mode-btn" type="button" aria-pressed="false">尺寸参数表单</button></div>
             <div id="textInputPanel">
               <label class="field-label" for="description">工程描述 <small>限定语法，需明确尺寸与单位</small></label>
-              <textarea id="description" rows="7" maxlength="1000" placeholder="例如：创建一块长120毫米、宽80毫米、厚8毫米的安装板，四角各有四个直径10毫米的通孔，长边方向间隔90毫米、宽边方向间隔50毫米。">创建一块长120毫米、宽80毫米、厚8毫米的安装板，四角共有四个直径10毫米的通孔，长边方向间隔90毫米，宽边方向间隔50毫米。</textarea>
+              <textarea id="description" rows="7" maxlength="1000" placeholder="例如：创建一块长120毫米、宽80毫米、厚8毫米的安装板，四角共有四个直径10毫米的通孔，长边方向间隔90毫米、宽边方向间隔50毫米。">创建一块长120毫米、宽80毫米、厚8毫米的安装板，四角共有四个直径10毫米的通孔，长边方向间隔90毫米，宽边方向间隔50毫米。</textarea>
               <div class="textarea-caption"><span>TEXT → MODELPLAN</span><span id="charCount">0 / 1000</span></div>
             </div>
             <div id="formInputPanel" hidden><label class="field-label" for="partType">选择零件类型</label><select id="partType" class="field-control"><option value="mounting_plate">四孔安装板</option><option value="rectangular_plate">矩形板</option><option value="cylinder">圆柱</option><option value="bushing">轴套</option></select><div id="parameterFields" class="parameter-fields"></div></div>
