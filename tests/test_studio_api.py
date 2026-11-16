@@ -17,16 +17,21 @@ class StudioRoutesTest(unittest.TestCase):
         self.assertIn(b"/studio.css", page.data)
         self.assertIn(b"/studio.js", page.data)
         self.assertIn("SolidWorks".encode(), page.data)
-        self.assertEqual(self.client.get("/studio").status_code, 200)
-        self.assertEqual(self.client.get("/studio.css").status_code, 200)
-        self.assertEqual(self.client.get("/studio.js").status_code, 200)
+        page.close()
+        for route in ("/studio", "/studio.css", "/studio.js"):
+            response = self.client.get(route)
+            self.assertEqual(response.status_code, 200, route)
+            response.close()
 
     def test_existing_autocad_page_kept(self):
         page = self.client.get("/autocad")
         self.assertEqual(page.status_code, 200)
         self.assertIn("DWG".encode(), page.data)
         self.assertIn(b"style.css", page.data)
-        self.assertEqual(self.client.get("/api/gb_presets").status_code, 200)
+        page.close()
+        response = self.client.get("/api/gb_presets")
+        self.assertEqual(response.status_code, 200)
+        response.close()
 
     def test_description_api(self):
         response = self.client.post("/api/model/plan", json={

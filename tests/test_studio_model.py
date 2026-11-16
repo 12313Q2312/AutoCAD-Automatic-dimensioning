@@ -106,7 +106,7 @@ class ModelPlanTest(unittest.TestCase):
                 })
 
     def test_missing_parameter(self):
-        with self.assertRaisesRegex(ModelPlanError, "缺少"):
+        with self.assertRaisesRegex(ModelPlanError, "厚度"):
             parse_description("制作长100毫米、宽40毫米的矩形板。")
 
     def test_no_units_is_not_guessed(self):
