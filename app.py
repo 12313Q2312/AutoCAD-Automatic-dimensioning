@@ -8,10 +8,12 @@ import json
 import uuid
 import logging
 import threading
+import tempfile
 from datetime import datetime
 from typing import Optional
 
 from flask import Flask, request, jsonify, send_from_directory, send_file
+from file_safety import valid_session_id, validate_dwg_name, safe_storage_path, public_files
 
 from dwg_processor.cad_com import AutoCADApp, detect_installed_cad, AutoCADError
 from dwg_processor.auto_dim import auto_dimension_drawing
@@ -22,10 +24,17 @@ from recommendation.engine import RecommendationEngine
 # ---------- 配置 ----------
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(__file__), "uploads")
+# Total multipart/raw request size, not an assurance about DWG binary validity.
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+@app.errorhandler(413)
+def upload_too_large(_error):
+    return jsonify({"success": False, "error": "请求超过 64 MiB 上传限制"}), 413
+
 
 # 全局推荐引擎
 recommender = RecommendationEngine()
@@ -228,9 +237,13 @@ def api_start():
     mode = data.get("mode", "standard")
     ai_params = data.get("ai_params")
 
-    # 支持 session_id 方式（客户端上传的文件）
-    if session_id and session_id in UPLOAD_SESSION:
-        session = UPLOAD_SESSION[session_id]
+    # A supplied session ID must resolve; never silently fall back to arbitrary client paths.
+    if session_id:
+        if not valid_session_id(session_id):
+            return jsonify({"success": False, "error": "会话标识无效"}), 400
+        session = UPLOAD_SESSION.get(session_id)
+        if session is None:
+            return jsonify({"success": False, "error": "会话不存在"}), 404
         files = session["files"]
     elif files_data:
         files = files_data if isinstance(files_data, list) else []
@@ -277,12 +290,11 @@ def api_start():
         return None
 
     if client_id:
+        # For upload sessions, queued and immediately-dispatched agents receive
+        # only names and session IDs; never host filesystem paths.
+        task_payload["files"] = [{"name": f["name"], "session_id": session_id} for f in files]
         match = _find_matching_agent(client_id)
         if match:
-            task_payload["files"] = [{
-                "name": f["name"],
-                "session_id": session_id,
-            } for f in files]
             agents[match]["task_queue"].append(task_payload)
             tasks[task_id]["dispatched_to"] = match
             logger.info(f"Task {task_id} dispatched to agent {match} (client: {client_id})")
@@ -324,7 +336,10 @@ def api_progress(task_id: str):
             "total": task["total"],
             "current": task["current"],
             "current_file": task.get("current_file", ""),
-            "results": task.get("results", {}),
+            "results": {
+                name: {k: v for k, v in info.items() if k != "dwg_path"}
+                for name, info in task.get("results", {}).items()
+            },
             "error": task.get("error", ""),
             "cad_version": task.get("cad_version", ""),
             "started_at": task.get("started_at", ""),
@@ -375,164 +390,178 @@ def api_task_list():
 
 # ---------- 客户端文件上传 ----------
 
-UPLOAD_SESSION: dict = {}  # session_id -> {"files": [...], "created_at": ...}
+UPLOAD_SESSION: dict = {}  # session_id -> internal metadata (paths never returned)
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
-    """客户端上传 DWG 文件"""
-    session_id = request.form.get("session_id", uuid.uuid4().hex[:12])
+    """Store DWG files only under a new bounded local session directory."""
+    supplied_session = request.form.get("session_id", "")
+    session_id = supplied_session or uuid.uuid4().hex[:12]
     client_id = request.form.get("client_id", "")
+    if not valid_session_id(session_id):
+        return jsonify({"success": False, "error": "会话标识无效"}), 400
+    if session_id in UPLOAD_SESSION:
+        return jsonify({"success": False, "error": "会话已存在，请新建上传会话"}), 409
+
     uploaded = request.files.getlist("files")
-
     if not uploaded:
-        return jsonify({"success": False, "error": "请选择文件"})
+        return jsonify({"success": False, "error": "请选择文件"}), 400
+    try:
+        names = [validate_dwg_name(f.filename) for f in uploaded]
+        if len({n.casefold() for n in names}) != len(names):
+            return jsonify({"success": False, "error": "同次上传存在重复文件名"}), 409
+        root = app.config["UPLOAD_FOLDER"]
+        session_dir = safe_storage_path(root, session_id)
+        paths = [safe_storage_path(root, session_id, name) for name in names]
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
 
-    session_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id)
-    os.makedirs(session_dir, exist_ok=True)
+    try:
+        # Never reuse a stale directory from an earlier crashed session.
+        os.makedirs(root, exist_ok=True)
+        os.mkdir(session_dir)
+    except FileExistsError:
+        return jsonify({"success": False, "error": "会话目录已存在"}), 409
+    except OSError:
+        logger.exception("无法创建上传目录")
+        return jsonify({"success": False, "error": "无法创建上传目录"}), 500
 
+    created = []
     files = []
-    for f in uploaded:
-        if not f.filename.lower().endswith(".dwg"):
-            continue
-        save_path = os.path.join(session_dir, f.filename)
-        f.save(save_path)
-        files.append({
-            "name": f.filename,
-            "path": save_path,
-            "size": os.path.getsize(save_path),
-        })
-
-    if not files:
-        return jsonify({"success": False, "error": "没有有效的 DWG 文件"})
+    try:
+        for f, name, path in zip(uploaded, names, paths):
+            # Exclusive create: no accidental overwrites of local CAD assets.
+            with open(path, "xb") as target:
+                created.append(path)
+                f.save(target)
+            files.append({"name": name, "path": path, "size": os.path.getsize(path)})
+    except OSError:
+        logger.exception("写入 DWG 失败")
+        for path in created:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        try:
+            os.rmdir(session_dir)
+        except OSError:
+            pass
+        return jsonify({"success": False, "error": "保存 DWG 失败"}), 500
 
     UPLOAD_SESSION[session_id] = {
-        "files": files,
-        "client_id": client_id,
+        "files": files, "client_id": client_id,
         "created_at": datetime.now().isoformat(),
     }
-
-    logger.info(f"上传会话: {session_id}, client: {client_id}, {len(files)} 个文件")
+    logger.info("上传会话: %s, %d 个文件", session_id, len(files))
     return jsonify({
-        "success": True,
-        "session_id": session_id,
-        "client_id": client_id,
-        "files": files,
-        "count": len(files),
+        "success": True, "session_id": session_id, "client_id": client_id,
+        "files": public_files(files), "count": len(files),
     })
 
 
 @app.route("/api/session/<session_id>", methods=["GET"])
 def api_session(session_id: str):
-    """查询上传会话信息"""
-    session = UPLOAD_SESSION.get(session_id)
-    if not session:
-        return jsonify({"success": False, "error": "会话不存在"})
+    session = UPLOAD_SESSION.get(session_id) if valid_session_id(session_id) else None
+    if session is None:
+        return jsonify({"success": False, "error": "会话不存在"}), 404
     return jsonify({
-        "success": True,
-        "session_id": session_id,
-        "files": session["files"],
-        "count": len(session["files"]),
-        "created_at": session["created_at"],
+        "success": True, "session_id": session_id,
+        "files": public_files(session["files"]),
+        "count": len(session["files"]), "created_at": session["created_at"],
     })
+
+
+def _session_file(session_id, filename):
+    """Return (original_path, output_path, output_name) for an owned filename."""
+    session = UPLOAD_SESSION.get(session_id) if valid_session_id(session_id) else None
+    if session is None:
+        return None
+    try:
+        validate_dwg_name(filename)
+        if filename not in {item["name"] for item in session["files"]}:
+            return None
+        base, ext = os.path.splitext(filename)
+        annotated_name = f"{base}_annotated{ext}"
+        root = app.config["UPLOAD_FOLDER"]
+        source = safe_storage_path(root, session_id, filename)
+        result = safe_storage_path(root, session_id, annotated_name, output=True)
+        return source, result, annotated_name
+    except ValueError:
+        return None
 
 
 @app.route("/api/download/<session_id>/<filename>")
 def api_download(session_id: str, filename: str):
-    """客户端下载标注完成的 DWG"""
-    session = UPLOAD_SESSION.get(session_id)
-    if not session:
-        return jsonify({"success": False, "error": "会话不存在"}), 404
-
-    # 从会话中找对应文件
-    file_info = None
-    for f in session.get("files", []):
-        if f["name"] == filename:
-            file_info = f
-            break
-
-    if not file_info:
+    paths = _session_file(session_id, filename)
+    if paths is None:
         return jsonify({"success": False, "error": "文件不存在"}), 404
-
-    # 尝试 output 版本（标注后的），没有则返回原文件
-    base_name, ext = os.path.splitext(filename)
-    output_name = f"{base_name}_annotated{ext}"
-    output_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id, "output")
-    output_path = os.path.join(output_dir, output_name)
-
-    if os.path.exists(output_path):
-        return send_file(output_path, as_attachment=True, download_name=output_name)
-    elif os.path.exists(file_info["path"]):
-        return send_file(file_info["path"], as_attachment=True, download_name=filename)
-    else:
-        return jsonify({"success": False, "error": "文件不存在"}), 404
+    source, result, annotated_name = paths
+    if os.path.isfile(result):
+        return send_file(result, as_attachment=True, download_name=annotated_name)
+    if os.path.isfile(source):
+        return send_file(source, as_attachment=True, download_name=filename)
+    return jsonify({"success": False, "error": "文件不存在"}), 404
 
 
 @app.route("/api/agent/download/<session_id>/<filename>")
 def api_agent_download(session_id: str, filename: str):
-    """Agent 下载待处理的 DWG 文件"""
-    session = UPLOAD_SESSION.get(session_id)
-    if not session:
-        return jsonify({"success": False, "error": "会话不存在"}), 404
-
-    file_info = None
-    for f in session.get("files", []):
-        if f["name"] == filename:
-            file_info = f
-            break
-
-    if not file_info or not os.path.exists(file_info["path"]):
+    paths = _session_file(session_id, filename)
+    if paths is None or not os.path.isfile(paths[0]):
         return jsonify({"success": False, "error": "文件不存在"}), 404
-
-    return send_file(file_info["path"], as_attachment=True, download_name=filename)
+    return send_file(paths[0], as_attachment=True, download_name=filename)
 
 
 @app.route("/api/agent/upload_result/<session_id>/<filename>", methods=["POST"])
 def api_agent_upload_result(session_id: str, filename: str):
-    """Agent 上传标注完成的 DWG"""
-    output_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id, "output")
-    os.makedirs(output_dir, exist_ok=True)
-
-    base_name, ext = os.path.splitext(filename)
-    output_name = f"{base_name}_annotated{ext}"
-    save_path = os.path.join(output_dir, output_name)
-
-    if "file" in request.files:
-        f = request.files["file"]
-        f.save(save_path)
-    elif request.data:
-        with open(save_path, "wb") as f:
-            f.write(request.data)
-    else:
-        return jsonify({"success": False, "error": "没有文件数据"})
-
-    logger.info(f"Agent 上传标注结果: {output_name}")
-    return jsonify({"success": True, "path": save_path})
+    paths = _session_file(session_id, filename)
+    if paths is None:
+        return jsonify({"success": False, "error": "未知的会话或 DWG 文件"}), 404
+    _source, result, annotated_name = paths
+    if "file" not in request.files and not request.data:
+        return jsonify({"success": False, "error": "没有文件数据"}), 400
+    try:
+        output_dir = safe_storage_path(app.config["UPLOAD_FOLDER"], session_id, output=True)
+        os.makedirs(output_dir, exist_ok=True)
+        # Atomic replacement supports normal agent retries while containing writes
+        # to the one registered session/file.
+        with tempfile.NamedTemporaryFile(dir=output_dir, prefix=".pending-", delete=False) as temporary:
+            temporary_name = temporary.name
+            try:
+                if "file" in request.files:
+                    request.files["file"].save(temporary)
+                else:
+                    temporary.write(request.data)
+            except Exception:
+                temporary.close()
+                os.unlink(temporary_name)
+                raise
+        os.replace(temporary_name, result)
+    except OSError:
+        logger.exception("保存 Agent 标注结果失败")
+        return jsonify({"success": False, "error": "无法保存标注结果"}), 500
+    logger.info("Agent 上传标注结果: %s", annotated_name)
+    return jsonify({"success": True, "name": annotated_name})
 
 
 @app.route("/api/results/<session_id>")
 def api_results(session_id: str):
-    """查询任务结果（供下载列表使用）"""
-    session = UPLOAD_SESSION.get(session_id)
-    if not session:
-        return jsonify({"success": False, "error": "会话不存在"})
-
-    output_dir = os.path.join(app.config["UPLOAD_FOLDER"], session_id, "output")
+    session = UPLOAD_SESSION.get(session_id) if valid_session_id(session_id) else None
+    if session is None:
+        return jsonify({"success": False, "error": "会话不存在"}), 404
     results = []
-    if os.path.isdir(output_dir):
-        for fname in os.listdir(output_dir):
-            if fname.lower().endswith(".dwg"):
-                results.append({
-                    "name": fname,
-                    "path": os.path.join(output_dir, fname),
-                    "size": os.path.getsize(os.path.join(output_dir, fname)),
-                })
-
+    for item in session["files"]:
+        paths = _session_file(session_id, item["name"])
+        if paths is None:
+            continue
+        _source, result, annotated_name = paths
+        if os.path.isfile(result):
+            results.append({"name": annotated_name, "size": os.path.getsize(result)})
     return jsonify({
-        "success": True,
-        "session_id": session_id,
-        "original_count": len(session.get("files", [])),
-        "results": results,
+        "success": True, "session_id": session_id,
+        "original_count": len(session["files"]), "results": results,
     })
+
+
 
 
 # ---------- 启动 ----------
