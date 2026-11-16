@@ -15,6 +15,19 @@ python app.py
 
 没有 CAD 时，可以先用网页查看流程和国标样式预设。要试用模拟代理，在另一个终端运行 `python dwg_agent.py --simulate`。
 
+## 本地文件安全与验证
+
+DWG 上传使用独立会话目录，仅允许合法的 DWG 文件名和会话 ID。默认请求限制为 **64 MiB**，重复会话或不安全文件名会被拒绝，上传/下载 API 不返回服务器内部路径。详细限制和兼容性变更见 [File Safety v0.1](docs/file-safety-v0.1.md)。
+
+可在无 AutoCAD 的环境中运行离线测试：
+
+```sh
+python -m pip install "flask>=3.0,<5" "httpx>=0.28,<1" "Pillow>=10,<13" "requests>=2.32,<3"
+python -m unittest discover -s tests -p "test_file_safety.py" -v
+```
+
+以上仅针对上传会话的文件路径边界，不包含公网身份认证和 DWG 内容安全扫描。服务必须继续限制在受信任的本机环境，真实 DWG 功能仍待验收。
+
 ## 当前验证
 
 Windows 上已检查首页、样式和脚本加载，以及国标样式接口返回。真实 DWG 的规则标注、尺寸精度和几何覆盖率待在 AutoCAD 中验收。服务默认仅监听本机。
