@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DraftPilot · 安装板出图</title>
+  <link rel="stylesheet" href="/draftpilot.css">
+  <script src="/draftpilot.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/studio#solidworks">DraftPilot</a>
+    <a href="/studio#solidworks">返回 CAD 工作台</a>
+  </header>
+  <main>
+    <h1>画一块安装板</h1>
+    <p class="intro">用自己的话描述四孔安装板。尺寸缺少时，我们会接着问。</p>
+    <p id="configuration" class="notice" role="status" hidden></p>
+    <section id="input-view" class="card" aria-labelledby="input-heading">
+      <h2 id="input-heading">说说你想要什么</h2>
+      <form id="message-form">
+        <label for="instruction">零件描述</label>
+        <textarea id="instruction" maxlength="1000" rows="4" placeholder="例如，做一块十二乘八厘米的板，四角打通孔"></textarea>
+        <div class="actions">
+          <label class="button secondary" for="sketch">选一张草图</label>
+          <input id="sketch" type="file" accept="image/png,image/jpeg" class="visually-hidden">
+          <button id="record" type="button" class="secondary" hidden>录一段话</button>
+        </div>
+        <div id="attachment" class="attachment" hidden>
+          <span id="filename"></span>
+          <button type="button" id="remove-sketch" class="text-button">移除</button>
+        </div>
+        <p class="privacy">提交描述、草图或录音时，相关输入会发给服务端配置的云端模型。</p>
+        <div class="actions">
+          <button id="submit" type="submit">继续</button>
+          <button id="return-review" type="button" class="secondary" hidden>返回预览</button>
+        </div>
+      </form>
+    </section>
+    <section id="review-view" class="card" aria-labelledby="review-heading" hidden>
+      <h2 id="review-heading" tabindex="-1">核对这张板</h2>
+      <img id="preview" alt="四孔安装板轮廓和孔位预览">
+      <p id="dimensions"></p>
+      <table>
+        <caption>孔中心相对板中心的位置（mm）</caption>
+        <thead><tr><th scope="col">孔位</th><th scope="col">X</th><th scope="col">Y</th><th scope="col">孔径</th></tr></thead>
+        <tbody id="holes"></tbody>
+      </table>
+      <p id="native-help" class="notice" hidden>在运行 SolidWorks 2025 的 Windows 本机可导出 SLDPRT、SLDDRW 和 PDF。</p>
+      <div class="actions">
+        <button id="export" type="button" hidden>生成 SolidWorks 文件</button>
+        <button id="edit" type="button" class="secondary">说一句修改</button>
+        <button id="previous" type="button" class="secondary" hidden>恢复上一版</button>
+        <button id="reset" type="button" class="text-button">新建一块板</button>
+      </div>
+    </section>
+    <p id="feedback" class="feedback" role="status" aria-live="polite" hidden></p>
+  </main>
+</body>
+</html>

@@ -1,9 +1,14 @@
 """Safe SVG sketch of validated plan geometry. Illustration only, no 3D CAD."""
 from .model import validate_plan
+from .plate_v2 import validate_plate
 
 
 def render_svg(plan: dict) -> str:
-    validate_plan(plan)
+    is_v2 = isinstance(plan, dict) and plan.get("schema_version") == "2.0"
+    if is_v2:
+        validate_plate(plan)
+    else:
+        validate_plan(plan)
     kind, p = plan["part_type"], plan["parameters"]
     canvas_w, canvas_h = 600, 390
     # Fixed text and controlled numeric parameters only. No raw user strings.
@@ -17,8 +22,13 @@ def render_svg(plan: dict) -> str:
             'rx="3" fill="#dbe9e8" stroke="#254958" stroke-width="2.5"/>',
         ]
         if kind == "mounting_plate":
-            radius = p["hole_diameter_mm"] * scale / 2
-            for cx, cy in plan["features"][1]["sketch"]["centers_mm"]:
+            sketch = plan["features"][1]["sketch"]
+            if is_v2:
+                circles = [(h["x_mm"], h["y_mm"], h["diameter_mm"]) for h in sketch["holes"]]
+            else:
+                circles = [(cx, cy, p["hole_diameter_mm"]) for cx, cy in sketch["centers_mm"]]
+            for cx, cy, diameter in circles:
+                radius = diameter * scale / 2
                 px = canvas_w/2 + cx * scale
                 py = canvas_h/2 + 4 - cy * scale
                 shapes.append(
