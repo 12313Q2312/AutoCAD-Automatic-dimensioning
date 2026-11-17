@@ -27,6 +27,8 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q app.py solidworks_engine tests
       - name: Check frontend JS syntax
-        run: node --check static/studio.js
+        run: |
+          node --check static/studio.js
+          node --check static/draftpilot.js
       - name: Run offline engine and Flask route tests
         run: python -m unittest discover -s tests -p "test_studio_*.py" -v

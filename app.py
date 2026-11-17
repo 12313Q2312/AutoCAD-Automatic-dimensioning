@@ -18,9 +18,11 @@ from dwg_processor.auto_dim import auto_dimension_drawing
 from dwg_processor.ai_processor import ai_process_drawing
 from dwg_processor.style_config import DimensionStyle, GB_PRESETS
 from recommendation.engine import RecommendationEngine
+from solidworks_engine.web_v2 import bp as draftpilot_v2
 
 # ---------- 配置 ----------
 app = Flask(__name__, static_folder="static", static_url_path="")
+app.register_blueprint(draftpilot_v2)
 app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
@@ -184,6 +186,11 @@ def index():
 def autocad_legacy():
     """Existing DWG annotation frontend remains available without changing its API."""
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.get("/draftpilot")
+def draftpilot_workspace():
+    return send_from_directory(app.static_folder, "draftpilot.html")
 
 
 @app.route("/api/model/plan", methods=["POST"])

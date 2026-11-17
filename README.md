@@ -1,5 +1,10 @@
 # Mechanical CAD Studio
 
+## DraftPilot v2
+
+用中文描述、录音或手绘草图发起四孔安装板设计。核对参数后，可在配置了云端模型的 Windows 本机发起 SolidWorks 2025 原生出图。完整的本机启动、支持范围及上机验收步骤见 [DraftPilot v2](docs/draftpilot-v2.md)。
+
+
 **面向机械工程的本地 CAD 自动化工作台（工程预览版）。**
 
 这个仓库从 AutoCAD Automatic Dimensioning 原型逐步扩展为两条工作流：

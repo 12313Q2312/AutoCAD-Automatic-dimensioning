@@ -47,7 +47,7 @@
             <h1>从设计意图，<br><span>到可验证的工程模型。</span></h1>
             <p>一个面向机械工程的自动化工作台。让 AutoCAD 图纸标注与 SolidWorks 参数化建模共享更清晰的流程、更可靠的验证和更可复用的工程资产。</p>
             <div class="hero-actions"><button class="btn btn-mint" data-goto="solidworks" type="button">开始参数化建模 <span>↗</span></button><button class="btn btn-ghost" data-goto="autocad" type="button">进入 AutoCAD 标注 <span>→</span></button></div>
-            <div class="hero-footnote"><span class="mini-dot"></span>当前 SolidWorks 模块仅生成 ModelPlan 与 SVG；原生文件生成尚未接入。</div>
+            <div class="hero-footnote"><span class="mini-dot"></span>可先验证 ModelPlan，也可打开 DraftPilot 进行对话式出图。</div>
           </div>
           <div class="hero-visual" aria-label="四孔安装板工程图示意">
             <div class="blueprint-grid"></div>
@@ -87,7 +87,7 @@
         </div>
         <div class="home-lower">
           <article class="panel workflow-panel"><div class="panel-heading"><span class="eyebrow">HOW IT WORKS</span><h3>可追溯的工程流程</h3></div><div class="workflow-items"><div><span class="step-number">01</span><strong>描述</strong><small>中文尺寸 / 工程参数</small></div><span class="step-arrow">→</span><div><span class="step-number">02</span><strong>校验</strong><small>几何限制 / 特征序列</small></div><span class="step-arrow">→</span><div><span class="step-number">03</span><strong>交付</strong><small>ModelPlan / 预览报告</small></div></div></article>
-          <article class="panel boundary-panel"><span class="eyebrow">VERIFICATION BOUNDARY</span><h3>明确区分模拟与真实执行</h3><p>目前 SolidWorks 模块为离线建模计划引擎；未调用 SolidWorks COM，也未输出 SLDPRT。真实建模能力将独立验收。</p><span class="boundary-pill"><span class="status-dot"></span>DETERMINISTIC / OFFLINE</span></article>
+          <article class="panel boundary-panel"><span class="eyebrow">VERIFICATION BOUNDARY</span><h3>明确区分模拟与真实执行</h3><p>离线实验室提供 ModelPlan 预览。对话式 DraftPilot 可在配置云端模型的 Windows 工作站发起 SolidWorks 2025 出图。</p><span class="boundary-pill"><span class="status-dot"></span>DETERMINISTIC / OFFLINE</span></article>
         </div>
       </section>
 
@@ -98,7 +98,7 @@
       </section>
 
       <section id="view-solidworks" class="page view" hidden>
-        <div class="page-heading"><div><span class="eyebrow">WORKSPACE / SOLIDWORKS</span><h1>参数化建模实验室<span class="heading-tag">SW-01</span></h1><p>把明确的中文设计要求转成可验证的建模计划。第一版不生成真实 SLDPRT。</p></div><span class="outline-status"><span class="status-dot"></span>OFFLINE ENGINE v0.1</span></div>
+        <div class="page-heading"><div><span class="eyebrow">WORKSPACE / SOLIDWORKS</span><h1>参数化建模实验室<span class="heading-tag">SW-01</span></h1><p>把明确的中文设计要求转成可验证的建模计划。第一版不生成真实 SLDPRT。</p></div><a class="btn btn-dark" href="/draftpilot">打开 DraftPilot</a></div>
         <div class="notice notice-mint"><span class="notice-icon">✓</span><span>当前能力：矩形板、四孔安装板、圆柱和轴套。使用规则解析，不调用 AI API，不执行宏或真实 SolidWorks。</span></div>
         <div class="model-layout">
           <article class="panel input-panel">
@@ -140,7 +140,7 @@
           <article class="example-card"><div class="example-mark">03 / CYLINDER</div><div class="example-illustration cylinder-demo"><span>◉</span></div><h3>圆柱</h3><p>圆形草图 + 高度 → 轴向拉伸计划。</p><button type="button" data-example="cylinder">载入模板 ↗</button></article>
           <article class="example-card"><div class="example-mark">04 / BUSHING</div><div class="example-illustration bushing-demo"><span>◎</span></div><h3>轴套</h3><p>内外径与长度 → 环形草图拉伸。</p><button type="button" data-example="bushing">载入模板 ↗</button></article>
         </div>
-        <div class="panel roadmap-panel"><span class="eyebrow">PROJECT ROADMAP</span><h3>从简单零件，建立复杂模型</h3><div class="roadmap-row"><span><b>SW-01</b> 离线特征计划</span><span class="roadmap-state current">当前版本</span></div><div class="roadmap-row"><span><b>SW-02</b> SolidWorks 原生执行器</span><span class="roadmap-state">待审批 / 待上机</span></div><div class="roadmap-row"><span><b>SW-03</b> L 型支架、法兰与阵列孔</span><span class="roadmap-state">规划中</span></div><div class="roadmap-row"><span><b>DWG-01</b> 二维工程图解析与特征重建</span><span class="roadmap-state">规划中</span></div></div>
+        <div class="panel roadmap-panel"><span class="eyebrow">PROJECT ROADMAP</span><h3>从简单零件，建立复杂模型</h3><div class="roadmap-row"><span><b>SW-01</b> 离线特征计划</span><span class="roadmap-state current">当前版本</span></div><div class="roadmap-row"><span><b>SW-02</b> SolidWorks 原生执行器</span><span class="roadmap-state">待上机验收</span></div><div class="roadmap-row"><span><b>SW-03</b> L 型支架、法兰与阵列孔</span><span class="roadmap-state">规划中</span></div><div class="roadmap-row"><span><b>DWG-01</b> 二维工程图解析与特征重建</span><span class="roadmap-state">规划中</span></div></div>
       </section>
     </main>
     <footer class="footer"><span>MECHANICAL CAD STUDIO · ENGINEERING PREVIEW</span><span>本地运行 / 结果以验证报告为准</span></footer>
